@@ -103,7 +103,7 @@ final class completion_test extends \advanced_testcase {
      * Get a user's completion state for the subcourse module.
      *
      * @param \stdClass $course Course record.
-     * @param \stdClass $cm Course module record.
+     * @param \cm_info $cm Course module information.
      * @param int $userid User id.
      * @return int Completion state.
      */
