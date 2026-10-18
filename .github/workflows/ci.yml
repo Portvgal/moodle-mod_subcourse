@@ -1,4 +1,4 @@
-name: plugin checks
+name: Plugin CI
 
 on:
   push:
@@ -71,25 +71,17 @@ jobs:
 
     steps:
       - name: Check out plugin
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           path: plugin
           persist-credentials: false
 
-      - name: Report test target
-        run: |
-          echo "Plugin commit: $GITHUB_SHA"
-          echo "Plugin ref: $GITHUB_REF"
-          echo "Moodle branch: $MOODLE_BRANCH"
-          echo "PHP version: ${{ matrix.php }}"
-          echo "Database: $DB"
-
       - name: Set up PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: ${{ matrix.php }}
           extensions: intl, mbstring, soap, zip, gd, xml, pgsql, mysqli, sodium
-          ini-values: max_input_vars=5000, opcache.enable_cli=1
+          ini-values: max_input_vars=5000, opcache.enable_cli=1, opcache.jit=disable
           coverage: none
 
       - name: Install OS packages
@@ -122,14 +114,8 @@ jobs:
       - name: Moodle code checker
         run: moodle-plugin-ci phpcs --max-warnings 0
 
-      - name: Moodle extra code checker if available
-        working-directory: plugin
-        run: |
-          if command -v phpcs >/dev/null 2>&1 && phpcs -i | grep -q 'moodle-extra'; then
-              phpcs --standard=moodle-extra --extensions=php .
-          else
-              echo "moodle-extra standard is not available in this environment; skipping optional check."
-          fi
+      - name: Moodle PHPDoc checker
+        run: moodle-plugin-ci phpdoc --max-warnings 0
 
       - name: Moodle plugin validation
         run: moodle-plugin-ci validate
@@ -139,6 +125,18 @@ jobs:
 
       - name: Mustache lint
         run: moodle-plugin-ci mustache
+
+      - name: CSS and Gherkin lint
+        working-directory: plugin
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find . -type f \( -name '*.css' -o -name '*.feature' \) -print -quit | grep -q .; then
+              cd ..
+              moodle-plugin-ci grunt --max-lint-warnings 0
+          else
+              echo 'No CSS or Gherkin sources found; skipping frontend lint.'
+          fi
 
       - name: Explicit PHPUnit files
         shell: bash
@@ -156,14 +154,14 @@ jobs:
               status=$?
               set -e
               printf '%s\n' "${output}"
-              echo "::endgroup::"
+              echo '::endgroup::'
 
-              if printf '%s\n' "${output}" | grep -Eiq 'No tests executed|No tests found|OK \((0|zero) tests|Tests:[[:space:]]+0'; then
+              if grep -Eiq 'No tests executed|No tests found|OK \((0|zero) tests|Tests:[[:space:]]+0' <<< "${output}"; then
                   echo "No PHPUnit tests executed for filter ${filter}" >&2
                   exit 1
               fi
 
-              if [ "${status}" -ne 0 ]; then
+              if [[ "${status}" -ne 0 ]]; then
                   exit "${status}"
               fi
           }
@@ -178,12 +176,12 @@ jobs:
         run: moodle-plugin-ci phpunit --fail-on-warning --testsuite mod_subcourse_testsuite
 
   behat:
-    name: Behat (${{ matrix.moodle-branch }}, PHP ${{ matrix.php }}, ${{ matrix.database }})
+    name: Behat (${{ matrix.moodle-branch }}, PHP ${{ matrix.php }}, pgsql)
     runs-on: ubuntu-24.04
 
     services:
       postgres:
-        image: ${{ matrix.database == 'pgsql' && matrix.postgres_image || '' }}
+        image: ${{ matrix.postgres_image }}
         env:
           POSTGRES_USER: postgres
           POSTGRES_HOST_AUTH_METHOD: trust
@@ -194,19 +192,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 3
-      mariadb:
-        image: ${{ matrix.database == 'mariadb' && matrix.mariadb_image || '' }}
-        env:
-          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: '1'
-          MYSQL_CHARACTER_SET_SERVER: utf8mb4
-          MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="healthcheck.sh --connect --innodb_initialized"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 3
 
     strategy:
       fail-fast: false
@@ -214,47 +199,29 @@ jobs:
         include:
           - moodle-branch: MOODLE_405_STABLE
             php: '8.3'
-            database: pgsql
             postgres_image: postgres:13
-            mariadb_image: ''
           - moodle-branch: MOODLE_500_STABLE
             php: '8.4'
-            database: pgsql
             postgres_image: postgres:14
-            mariadb_image: ''
 
     env:
-      DB: ${{ matrix.database }}
+      DB: pgsql
       MOODLE_BRANCH: ${{ matrix.moodle-branch }}
 
     steps:
       - name: Check out plugin
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           path: plugin
           persist-credentials: false
 
-      - name: Report test target
-        run: |
-          echo "Plugin commit: $GITHUB_SHA"
-          echo "Plugin ref: $GITHUB_REF"
-          echo "Moodle branch: $MOODLE_BRANCH"
-          echo "PHP version: ${{ matrix.php }}"
-          echo "Database: $DB"
-
       - name: Set up PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: ${{ matrix.php }}
           extensions: intl, mbstring, soap, zip, gd, xml, pgsql, mysqli, sodium
-          ini-values: max_input_vars=5000, opcache.enable_cli=1
+          ini-values: max_input_vars=5000, opcache.enable_cli=1, opcache.jit=disable
           coverage: none
-
-      - name: Install OS packages
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libxml2-utils
-          sudo locale-gen en_AU.UTF-8
 
       - name: Install moodle-plugin-ci
         run: |
@@ -262,19 +229,38 @@ jobs:
           echo "$(pwd)/ci/bin" >> "$GITHUB_PATH"
           echo "$(pwd)/ci/vendor/bin" >> "$GITHUB_PATH"
           echo "NVM_DIR=$HOME/.nvm" >> "$GITHUB_ENV"
+          sudo locale-gen en_AU.UTF-8
 
       - name: Install Moodle test site
         run: moodle-plugin-ci install --plugin ./plugin --db-host=127.0.0.1
 
       - name: Behat @mod_subcourse scenarios
         id: behat
-        run: moodle-plugin-ci behat --profile chrome --tags='@mod_subcourse'
+        run: moodle-plugin-ci behat --profile chrome --tags='@mod_subcourse' --scss-deprecations
 
       - name: Upload Behat faildump
         if: ${{ failure() && steps.behat.outcome == 'failure' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: behat-faildump-${{ matrix.moodle-branch }}-php${{ matrix.php }}-${{ matrix.database }}
+          name: behat-faildump-${{ matrix.moodle-branch }}-php${{ matrix.php }}-pgsql
           path: moodledata/behat_dump
           retention-days: 7
           if-no-files-found: ignore
+
+  required-checks:
+    name: Required checks
+    if: ${{ always() }}
+    needs:
+      - static-and-phpunit
+      - behat
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Verify required jobs
+        env:
+          STATIC_RESULT: ${{ needs.static-and-phpunit.result }}
+          BEHAT_RESULT: ${{ needs.behat.result }}
+        run: |
+          if [[ "$STATIC_RESULT" != 'success' || "$BEHAT_RESULT" != 'success' ]]; then
+              echo "Required jobs did not succeed: static-and-phpunit=$STATIC_RESULT behat=$BEHAT_RESULT" >&2
+              exit 1
+          fi
