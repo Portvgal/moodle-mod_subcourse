@@ -59,6 +59,7 @@ final class externallib_test extends externallib_advanced_testcase {
             'course' => $metacourse->id,
         ]);
         $generator->enrol_user($student->id, $metacourse->id, 'student');
+        $this->setUser($student);
 
         $returnvalue = \mod_subcourse\external\view_subcourse::execute($subcourse->id);
 
@@ -66,5 +67,36 @@ final class externallib_test extends externallib_advanced_testcase {
         $returnvalue = external_api::clean_returnvalue(\mod_subcourse\external\view_subcourse::execute_returns(), $returnvalue);
 
         $this->assertEquals(true, $returnvalue['status']);
+    }
+
+    /**
+     * Test that the external function enforces the view capability.
+     *
+     * @covers \mod_subcourse\external\view_subcourse::execute
+     */
+    public function test_view_subcourse_requires_view_capability(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $metacourse = $generator->create_course();
+        $student = $generator->create_user();
+        $subcourse = $generator->create_module('subcourse', [
+            'course' => $metacourse->id,
+        ]);
+        $generator->enrol_user($student->id, $metacourse->id, 'student');
+
+        $cm = get_coursemodule_from_instance('subcourse', $subcourse->id, $metacourse->id, false, MUST_EXIST);
+        $context = \context_module::instance($cm->id);
+        $studentroleid = $DB->get_field('role', 'id', ['shortname' => 'student'], MUST_EXIST);
+        assign_capability('mod/subcourse:view', CAP_PREVENT, $studentroleid, $context->id);
+
+        $this->setUser($student);
+        // Context validation rejects modules whose view capability is denied.
+        $this->expectException(\core\exception\require_login_exception::class);
+
+        \mod_subcourse\external\view_subcourse::execute($subcourse->id);
     }
 }
