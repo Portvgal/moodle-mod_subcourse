@@ -32,6 +32,8 @@
 function xmldb_subcourse_upgrade($oldversion = 0) {
     global $CFG, $DB;
 
+    require_once($CFG->libdir . '/completionlib.php');
+
     $dbman = $DB->get_manager();
 
     if ($oldversion < 2013102501) {

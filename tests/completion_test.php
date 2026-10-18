@@ -224,9 +224,9 @@ final class completion_test extends \advanced_testcase {
     }
 
     /**
-     * Test referenced course completion syncs only the affected user.
+     * Test referenced course completion syncs only the requested users.
      *
-     * @covers \mod_subcourse\completion\refcourse_completion_sync::sync_user
+     * @covers \mod_subcourse\completion\refcourse_completion_sync::sync_users
      * @covers \mod_subcourse\completion\custom_completion::get_state
      */
     public function test_refcourse_completion_syncs_only_target_user(): void {
@@ -236,7 +236,7 @@ final class completion_test extends \advanced_testcase {
         [$maincourse, $refcourse, $subcourse, $cm, $student1, $student2] = $this->create_completion_fixture();
 
         $this->mark_course_complete($refcourse->id, $student1->id);
-        refcourse_completion_sync::sync_user($subcourse, $student1->id);
+        $this->assertSame(1, refcourse_completion_sync::sync_users($subcourse, [$student1->id, $student1->id, 0]));
 
         $this->assertSame(COMPLETION_COMPLETE, $this->get_module_completion_state($maincourse, $cm, $student1->id));
         $this->assertSame(COMPLETION_INCOMPLETE, $this->get_module_completion_state($maincourse, $cm, $student2->id));

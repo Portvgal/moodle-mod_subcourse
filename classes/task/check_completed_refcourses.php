@@ -104,12 +104,10 @@ class check_completed_refcourses extends \core\task\scheduled_task {
 
             mtrace("Subcourse {$subcourse->id}: checking refcourse {$subcourse->refcourse} completions ... ");
 
-            $synced = 0;
-            foreach (array_keys($cache[$subcourse->course]->participants) as $userid) {
-                if (\mod_subcourse\completion\refcourse_completion_sync::sync_user($subcourse, (int)$userid)) {
-                    $synced++;
-                }
-            }
+            $synced = \mod_subcourse\completion\refcourse_completion_sync::sync_users(
+                $subcourse,
+                array_keys($cache[$subcourse->course]->participants)
+            );
 
             mtrace(" ... checked " . count($cache[$subcourse->course]->participants) . " users, synced {$synced}");
         }

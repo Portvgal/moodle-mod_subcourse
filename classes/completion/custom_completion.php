@@ -88,7 +88,7 @@ class custom_completion extends \core_completion\activity_custom_completion {
         ]);
 
         $gradepass = $gradeitem ? (float)$gradeitem->gradepass : 0.0;
-        if (!$gradeitem || $gradepass <= 0.000009) {
+        if (!$gradeitem || !grade_floats_different($gradepass, 0.0)) {
             return COMPLETION_INCOMPLETE;
         }
 
