@@ -425,6 +425,8 @@ final class completion_test extends \advanced_testcase {
 
         $customcompletion = new custom_completion($cm, $student->id);
         $this->assertSame(COMPLETION_COMPLETE_FAIL, $customcompletion->get_state('completionpassgradesubcourse'));
+
+        refcourse_completion_sync::sync_user($subcourse, $student->id);
         $this->assertSame(COMPLETION_COMPLETE_FAIL, $this->get_module_completion_state($maincourse, $cm, $student->id));
     }
 
