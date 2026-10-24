@@ -311,8 +311,7 @@ class mod_subcourse_mod_form extends moodleform_mod {
         $data->completionpassgradesubcourse = $usesubcoursepassgrade ? 1 : 0;
 
         if ($usesubcoursepassgrade) {
-            // Moodle's core pass-grade completion stores failing grades as COMPLETE_FAIL.
-            // Subcourse needs a stricter custom rule so a failing grade remains incomplete.
+            // The custom rule uses the referenced course's pass grade and reports failures as COMPLETE_FAIL.
             $data->completionusegrade = 0;
             $data->completionpassgrade = 0;
             $data->completiongradeitemnumber = null;

@@ -101,7 +101,7 @@ class custom_completion extends \core_completion\activity_custom_completion {
             return COMPLETION_INCOMPLETE;
         }
 
-        return $grade->finalgrade >= $gradepass ? COMPLETION_COMPLETE : COMPLETION_INCOMPLETE;
+        return $grade->finalgrade >= $gradepass ? COMPLETION_COMPLETE : COMPLETION_COMPLETE_FAIL;
     }
 
     /**

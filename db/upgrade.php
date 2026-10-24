@@ -240,8 +240,8 @@ function xmldb_subcourse_upgrade($oldversion = 0) {
 
                 foreach ($completionrecords as $completionrecord) {
                     $score = $completionrecord->finalgrade ?? $completionrecord->rawgrade;
-                    $newstate = ($score !== null && $score >= $gradeitem->gradepass) ?
-                        COMPLETION_COMPLETE : COMPLETION_INCOMPLETE;
+                    $newstate = $score === null ? COMPLETION_INCOMPLETE :
+                        ($score >= $gradeitem->gradepass ? COMPLETION_COMPLETE : COMPLETION_COMPLETE_FAIL);
 
                     if ((int)$completionrecord->completionstate !== $newstate) {
                         $completionrecord->completionstate = $newstate;
@@ -255,6 +255,44 @@ function xmldb_subcourse_upgrade($oldversion = 0) {
         }
 
         upgrade_mod_savepoint(true, 2026090301, 'subcourse');
+    }
+
+    if ($oldversion < 2026102400) {
+        // Recalculate pass-grade failures so Moodle displays its failed (red) completion state.
+        $sql = "SELECT cmc.id, cmc.completionstate, gg.finalgrade, gg.rawgrade, gi.gradepass
+                  FROM {course_modules_completion} cmc
+                  JOIN {course_modules} cm ON cm.id = cmc.coursemoduleid
+                  JOIN {modules} m ON m.id = cm.module AND m.name = :modulename
+                  JOIN {subcourse} s ON s.id = cm.instance AND s.completionpassgradesubcourse = 1
+                  JOIN {grade_items} gi
+                    ON gi.courseid = cm.course
+                   AND gi.itemtype = :itemtype
+                   AND gi.itemmodule = :itemmodule
+                   AND gi.iteminstance = s.id
+                   AND gi.itemnumber = 0
+             LEFT JOIN {grade_grades} gg ON gg.userid = cmc.userid AND gg.itemid = gi.id
+                 WHERE cmc.overrideby IS NULL
+                   AND gi.gradepass > 0";
+        $records = $DB->get_recordset_sql($sql, [
+            'modulename' => 'subcourse',
+            'itemtype' => 'mod',
+            'itemmodule' => 'subcourse',
+        ]);
+
+        foreach ($records as $record) {
+            $score = $record->finalgrade ?? $record->rawgrade;
+            $newstate = $score === null ? COMPLETION_INCOMPLETE :
+                ($score >= $record->gradepass ? COMPLETION_COMPLETE : COMPLETION_COMPLETE_FAIL);
+
+            if ((int)$record->completionstate !== $newstate) {
+                $record->completionstate = $newstate;
+                $record->timemodified = time();
+                $DB->update_record('course_modules_completion', $record);
+            }
+        }
+        $records->close();
+
+        upgrade_mod_savepoint(true, 2026102400, 'subcourse');
     }
 
     return true;

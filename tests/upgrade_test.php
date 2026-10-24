@@ -96,7 +96,7 @@ final class upgrade_test extends \advanced_testcase {
         $this->assertNull($DB->get_field('course_modules', 'completiongradeitemnumber', ['id' => $cm->id]));
 
         $this->assert_completion_state($cm->id, $passinguser->id, COMPLETION_COMPLETE);
-        $this->assert_completion_state($cm->id, $failinguser->id, COMPLETION_INCOMPLETE);
+        $this->assert_completion_state($cm->id, $failinguser->id, COMPLETION_COMPLETE_FAIL);
         $this->assert_completion_state($cm->id, $overrideuser->id, COMPLETION_COMPLETE);
     }
 

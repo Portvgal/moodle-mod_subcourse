@@ -4,7 +4,7 @@ set -euo pipefail
 
 readonly EXPECTED_TAG='v10.2.0'
 readonly EXPECTED_COMPONENT='mod_subcourse'
-readonly EXPECTED_VERSION='2026101800'
+readonly EXPECTED_VERSION='2026102400'
 readonly EXPECTED_SUPPORTED='[405, 500]'
 
 repositoryroot="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

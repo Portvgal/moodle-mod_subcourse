@@ -368,7 +368,7 @@ final class completion_test extends \advanced_testcase {
     public static function strict_passgrade_completion_provider(): array {
         return [
             'no grade' => [null, 100, 'incomplete'],
-            'below grade to pass' => [0, 100, 'incomplete'],
+            'below grade to pass' => [0, 100, 'failed'],
             'equal to grade to pass' => [100, 100, 'complete'],
             'above grade to pass' => [100, 75, 'complete'],
             'missing grade to pass' => [100, null, 'incomplete'],
@@ -384,6 +384,7 @@ final class completion_test extends \advanced_testcase {
     private function completion_state_from_label(string $label): int {
         return match ($label) {
             'complete' => COMPLETION_COMPLETE,
+            'failed' => COMPLETION_COMPLETE_FAIL,
             'incomplete' => COMPLETION_INCOMPLETE,
             default => throw new \coding_exception('Unknown completion state label: ' . $label),
         };
@@ -407,15 +408,15 @@ final class completion_test extends \advanced_testcase {
 
         $this->set_subcourse_grade($subcourse, $student->id, 50, 75);
         refcourse_completion_sync::sync_user($subcourse, $student->id);
-        $this->assertSame(COMPLETION_INCOMPLETE, $this->get_module_completion_state($maincourse, $cm, $student->id));
+        $this->assertSame(COMPLETION_COMPLETE_FAIL, $this->get_module_completion_state($maincourse, $cm, $student->id));
     }
 
     /**
-     * Test failing Subcourse pass-grade completion does not create Moodle COMPLETE_FAIL state.
+     * Test failing Subcourse pass-grade completion creates Moodle's failed completion state.
      *
      * @covers \mod_subcourse\completion\custom_completion::get_state
      */
-    public function test_strict_passgrade_failure_is_incomplete_not_complete_fail(): void {
+    public function test_strict_passgrade_failure_is_complete_fail(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -423,8 +424,8 @@ final class completion_test extends \advanced_testcase {
         $this->set_subcourse_grade($subcourse, $student->id, 0, 100);
 
         $customcompletion = new custom_completion($cm, $student->id);
-        $this->assertSame(COMPLETION_INCOMPLETE, $customcompletion->get_state('completionpassgradesubcourse'));
-        $this->assertSame(COMPLETION_INCOMPLETE, $this->get_module_completion_state($maincourse, $cm, $student->id));
+        $this->assertSame(COMPLETION_COMPLETE_FAIL, $customcompletion->get_state('completionpassgradesubcourse'));
+        $this->assertSame(COMPLETION_COMPLETE_FAIL, $this->get_module_completion_state($maincourse, $cm, $student->id));
     }
 
     /**
